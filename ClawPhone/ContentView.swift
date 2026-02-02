@@ -159,6 +159,7 @@ struct SetupView: View {
 struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var messageText = ""
+    @State private var showingSettings = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -170,7 +171,16 @@ struct ChatView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(ClawTheme.text)
+                
                 Spacer()
+                
+                // Settings button
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title3)
+                        .foregroundColor(ClawTheme.textSecondary)
+                }
+                .padding(.trailing, 8)
                 
                 // Disconnect button
                 Button(action: { viewModel.disconnect() }) {
@@ -181,6 +191,9 @@ struct ChatView: View {
             }
             .padding()
             .background(ClawTheme.surface)
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+            }
             
             // Messages
             ScrollViewReader { proxy in
@@ -312,7 +325,7 @@ class ChatViewModel: ObservableObject {
     
     private var chatId: String = ""
     private var pollTimer: Timer?
-    private let synthesizer = AVSpeechSynthesizer()
+    private let voiceManager = VoiceManager.shared
     
     init() {
         // Check if already connected
@@ -391,13 +404,7 @@ class ChatViewModel: ObservableObject {
     }
     
     func speak(_ text: String) {
-        let cleanText = text.replacingOccurrences(of: "🦞", with: "").trimmingCharacters(in: .whitespaces)
-        guard !cleanText.isEmpty else { return }
-        
-        let utterance = AVSpeechUtterance(string: cleanText)
-        utterance.voice = AVSpeechSynthesisVoice(language: "en-GB")
-        utterance.rate = 0.52
-        synthesizer.speak(utterance)
+        voiceManager.speak(text)
     }
 }
 
