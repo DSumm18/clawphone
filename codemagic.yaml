@@ -7,6 +7,8 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
+      groups:
+        - appstore
       vars:
         BUNDLE_ID: "com.dsumm.clawphone"
         XCODE_PROJECT: "ClawPhone.xcodeproj"
@@ -19,21 +21,31 @@ workflows:
       - name: Generate Xcode project
         script: xcodegen generate
         
-      - name: List schemes
-        script: xcodebuild -project ClawPhone.xcodeproj -list
+      - name: Set up keychain
+        script: keychain initialize
         
-      - name: Build iOS app (Simulator - No Signing)
+      - name: Fetch signing certificates
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_DEVELOPMENT \
+            --create
+          
+      - name: Set up signing
+        script: |
+          keychain add-certificates
+          xcode-project use-profiles
+          
+      - name: Build iOS app
         script: |
           xcodebuild build \
             -project ClawPhone.xcodeproj \
             -scheme ClawPhone \
             -configuration Debug \
-            -sdk iphonesimulator \
-            -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates
     
     artifacts:
+      - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - ~/Library/Developer/Xcode/DerivedData/**/Build/Products/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/Products/**/*.app
