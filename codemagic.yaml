@@ -19,17 +19,20 @@ workflows:
       - name: Generate Xcode project
         script: xcodegen generate
         
+      - name: List schemes
+        script: xcodebuild -project ClawPhone.xcodeproj -list
+        
       - name: Build iOS app (Simulator - No Signing)
         script: |
           xcodebuild build \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
+            -project ClawPhone.xcodeproj \
+            -scheme ClawPhone \
+            -configuration Debug \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=YES
+            CODE_SIGNING_ALLOWED=NO
     
     artifacts:
       - /tmp/xcodebuild_logs/*.log

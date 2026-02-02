@@ -3,12 +3,21 @@ options:
   bundleIdPrefix: com.dsumm
   deploymentTarget:
     iOS: "16.0"
+  createIntermediateGroups: true
 
 settings:
   base:
     DEVELOPMENT_TEAM: J7W6QJ77XW
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+
+schemes:
+  ClawPhone:
+    build:
+      targets:
+        ClawPhone: all
+    run:
+      config: Debug
 
 targets:
   ClawPhone:
