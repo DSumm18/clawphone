@@ -24,14 +24,14 @@ workflows:
       - name: Set up keychain
         script: keychain initialize
         
-      - name: Decode private key
-        script: |
-          mkdir -p "$HOME/private_keys"
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > "$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8"
-          cat "$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8"
-          
       - name: Fetch signing certificates
         script: |
+          # Decode base64 key and export for CLI
+          mkdir -p "$HOME/private_keys"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > "$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8"
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat $HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8)"
+          
+          # Now fetch signing files
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_DEVELOPMENT \
             --create
