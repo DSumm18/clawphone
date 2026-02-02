@@ -24,6 +24,12 @@ workflows:
       - name: Set up keychain
         script: keychain initialize
         
+      - name: Decode private key
+        script: |
+          mkdir -p "$HOME/private_keys"
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" | base64 --decode > "$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8"
+          cat "$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_IDENTIFIER.p8"
+          
       - name: Fetch signing certificates
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
