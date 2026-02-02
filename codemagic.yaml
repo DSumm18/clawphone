@@ -11,9 +11,6 @@ workflows:
         BUNDLE_ID: "com.dsumm.clawphone"
         XCODE_PROJECT: "ClawPhone.xcodeproj"
         XCODE_SCHEME: "ClawPhone"
-      ios_signing:
-        distribution_type: development
-        bundle_identifier: com.dsumm.clawphone
     
     scripts:
       - name: Install XcodeGen
@@ -22,18 +19,18 @@ workflows:
       - name: Generate Xcode project
         script: xcodegen generate
         
-      - name: Build iOS app
+      - name: Build iOS app (Simulator - No Signing)
         script: |
           xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' \
-            CODE_SIGN_IDENTITY="" \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2' \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=YES
     
     artifacts:
-      - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-      - build/ios/xcarchive/*.xcarchive
+      - ~/Library/Developer/Xcode/DerivedData/**/Build/Products/**/*.app
