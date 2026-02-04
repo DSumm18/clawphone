@@ -137,40 +137,71 @@ struct SubscribeView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     
+    private let catalog = VoiceCatalog.shared
+    
     var body: some View {
         NavigationView {
             ZStack {
                 ClawTheme.background.ignoresSafeArea()
                 
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        Text("🎭")
-                            .font(.system(size: 60))
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 12) {
+                            Text("🎭")
+                                .font(.system(size: 60))
+                            
+                            Text("Unlock \(catalog.totalVoiceCount) Voices")
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundColor(ClawTheme.text)
+                            
+                            Text("\(catalog.categoryCount) categories of premium characters")
+                                .foregroundColor(ClawTheme.textSecondary)
+                        }
+                        .padding(.top, 20)
                         
-                        Text("Unlock All Voices")
-                            .font(.title)
-                            .fontWeight(.bold)
-                            .foregroundColor(ClawTheme.text)
-                        
-                        Text("Get premium character voices")
-                            .foregroundColor(ClawTheme.textSecondary)
-                    }
-                    .padding(.top, 20)
-                    
-                    // Voice preview
-                    VStack(spacing: 16) {
-                        VoicePreviewRow(emoji: "🧽", name: "SpongeBob", included: true)
-                        VoicePreviewRow(emoji: "⭐", name: "Patrick", included: true)
-                        VoicePreviewRow(emoji: "🦀", name: "Mr. Krabs", included: true)
-                        VoicePreviewRow(emoji: "🦑", name: "Squidward", included: true)
-                    }
-                    .padding()
-                    .background(ClawTheme.surface)
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-                    
-                    Spacer()
+                        // Voice categories
+                        ForEach(catalog.allCategories) { category in
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text(category.emoji)
+                                    Text(category.displayName)
+                                        .font(.headline)
+                                        .foregroundColor(ClawTheme.text)
+                                    Spacer()
+                                    Text("\(category.voices.count) voices")
+                                        .font(.caption)
+                                        .foregroundColor(ClawTheme.textSecondary)
+                                }
+                                
+                                ForEach(category.voices) { voice in
+                                    HStack {
+                                        Text(voice.emoji)
+                                            .font(.title3)
+                                        Text(voice.name)
+                                            .foregroundColor(ClawTheme.text)
+                                        Spacer()
+                                        if voice.isFree {
+                                            Text("FREE")
+                                                .font(.caption)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 2)
+                                                .background(Color.green.opacity(0.2))
+                                                .foregroundColor(.green)
+                                                .cornerRadius(4)
+                                        }
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                    }
+                                    .padding(.leading, 8)
+                                }
+                            }
+                            .padding()
+                            .background(ClawTheme.surface)
+                            .cornerRadius(16)
+                        }
+                        .padding(.horizontal)
                     
                     // Subscribe button
                     if let product = storeManager.products.first {
@@ -250,23 +281,7 @@ struct SubscribeView: View {
     }
 }
 
-struct VoicePreviewRow: View {
-    let emoji: String
-    let name: String
-    let included: Bool
-    
-    var body: some View {
-        HStack {
-            Text(emoji)
-                .font(.title2)
-            Text(name)
-                .foregroundColor(ClawTheme.text)
-            Spacer()
-            Image(systemName: included ? "checkmark.circle.fill" : "lock.fill")
-                .foregroundColor(included ? .green : .gray)
-        }
-    }
-}
+// VoicePreviewRow removed - using VoiceCatalog instead
 
 #Preview {
     SubscribeView()
