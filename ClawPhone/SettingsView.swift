@@ -64,7 +64,7 @@ struct SettingsView: View {
                                         .fontWeight(.semibold)
                                 }
                             }
-                            .disabled(connectCode.count != 6 || isConnecting)
+                            .disabled(connectCode.count != 8 || isConnecting)
                             .buttonStyle(.borderedProminent)
                         }
                     }
@@ -199,7 +199,7 @@ struct SettingsView: View {
     }
     
     func submitConnectCode() {
-        guard connectCode.count == 6 else { return }
+        guard connectCode.count == 8 else { return }
         isConnecting = true
         
         Task {
