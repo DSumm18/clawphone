@@ -68,6 +68,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.dsumm.clawphone
+        INFOPLIST_FILE: "ClawPhoneWatch/Info.plist"
     info:
       properties:
         CFBundleDisplayName: ClawPhone
