@@ -57,7 +57,7 @@ class StoreManager: ObservableObject {
         
         switch result {
         case .success(let verification):
-            let transaction = try checkVerified(verification)
+            let transaction = try checkVerifiedInstance(verification)
             await updateSubscriptionStatus()
             await transaction.finish()
             print("[Store] Purchase successful!")
@@ -116,8 +116,12 @@ class StoreManager: ObservableObject {
         return Task.detached {
             for await result in Transaction.updates {
                 do {
-                    let transaction = try self.checkVerified(result)
-                    await self.updateSubscriptionStatus()
+                    let transaction = try Self.checkVerified(result)
+                    await MainActor.run {
+                        Task {
+                            await self.updateSubscriptionStatus()
+                        }
+                    }
                     await transaction.finish()
                 } catch {
                     print("[Store] Transaction verification failed: \(error)")
@@ -126,7 +130,16 @@ class StoreManager: ObservableObject {
         }
     }
     
-    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+    private static func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
+        switch result {
+        case .unverified:
+            throw StoreError.failedVerification
+        case .verified(let safe):
+            return safe
+        }
+    }
+    
+    private func checkVerifiedInstance<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
         case .unverified:
             throw StoreError.failedVerification
