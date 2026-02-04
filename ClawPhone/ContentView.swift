@@ -87,12 +87,20 @@ struct ChatView: View {
                                 .id(message.id)
                         }
                         
+                        // Show typing indicator when waiting
+                        if viewModel.isWaitingForResponse {
+                            TypingIndicator(emoji: viewModel.voiceManager.selectedVoice.emoji)
+                                .id("typing")
+                                .transition(.opacity.combined(with: .scale))
+                        }
+                        
                         // Bottom anchor for reliable scrolling
                         Color.clear
                             .frame(height: 1)
                             .id("bottom")
                     }
                     .padding()
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.isWaitingForResponse)
                 }
                 .onChange(of: viewModel.messages.count) { _ in
                     // Delay to ensure view has rendered
@@ -120,6 +128,7 @@ struct ChatView: View {
 struct MessageBubble: View {
     let message: ChatMessage
     let emoji: String
+    @State private var appeared = false
     
     var body: some View {
         HStack {
@@ -137,8 +146,57 @@ struct MessageBubble: View {
                     .foregroundColor(.white)
                     .cornerRadius(16)
             }
+            .scaleEffect(appeared ? 1.0 : 0.8)
+            .opacity(appeared ? 1.0 : 0.0)
+            .onAppear {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    appeared = true
+                }
+            }
             
             if !message.isFromUser { Spacer(minLength: 60) }
+        }
+    }
+}
+
+// MARK: - Typing Indicator
+struct TypingIndicator: View {
+    let emoji: String
+    @State private var dotScale: [CGFloat] = [1, 1, 1]
+    
+    var body: some View {
+        HStack {
+            HStack(alignment: .top, spacing: 8) {
+                Text(emoji)
+                    .font(.title3)
+                
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { index in
+                        Circle()
+                            .fill(ClawTheme.textSecondary)
+                            .frame(width: 8, height: 8)
+                            .scaleEffect(dotScale[index])
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(ClawTheme.surface)
+                .cornerRadius(16)
+            }
+            Spacer(minLength: 60)
+        }
+        .onAppear { animateDots() }
+    }
+    
+    private func animateDots() {
+        for i in 0..<3 {
+            withAnimation(
+                Animation.easeInOut(duration: 0.4)
+                    .repeatForever(autoreverses: true)
+                    .delay(Double(i) * 0.15)
+            ) {
+                dotScale[i] = 1.4
+            }
         }
     }
 }

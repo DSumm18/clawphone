@@ -21,7 +21,7 @@ struct SettingsView: View {
         NavigationView {
             Form {
                 // Connection Section - Most Important!
-                Section(header: Text("🔗 Connect to Your Bot"), footer: Text("Get your 6-digit code from your Clawdbot by typing /connect clawphone")) {
+                Section(header: Text("🔗 Connect to Your Bot"), footer: Text("Get your 8-digit code from your Clawdbot by typing /connect clawphone")) {
                     
                     // Status indicator
                     HStack {
@@ -50,7 +50,7 @@ struct SettingsView: View {
                     // Connect code input
                     if case .notConnected = connectionStatus {
                         HStack {
-                            TextField("Enter 6-digit code", text: $connectCode)
+                            TextField("Enter 8-digit code", text: $connectCode)
                                 .keyboardType(.numberPad)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .disabled(isConnecting)
