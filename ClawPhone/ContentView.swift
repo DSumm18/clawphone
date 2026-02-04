@@ -393,8 +393,10 @@ class ChatViewModel: ObservableObject {
                             )
                             messages.append(chatMessage)
                             
-                            // Speak the response
-                            voiceManager.speak(msg.text)
+                            // Speak the response (skip thinking indicators)
+                            if msg.text != "..." && !msg.text.contains("is on it") {
+                                voiceManager.speak(msg.text)
+                            }
                             
                             // No longer waiting
                             isWaitingForResponse = false

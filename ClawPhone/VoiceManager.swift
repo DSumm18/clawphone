@@ -35,7 +35,7 @@ class VoiceManager: NSObject, ObservableObject {
     
     @Published var isSpeaking = false
     @Published var selectedVoice: CharacterVoice = .spongebob
-    @Published var useFishAudio = true  // Use Fish Audio by default
+    @Published var useFishAudio = true  // Always use Fish Audio (toggle removed)
     
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
@@ -125,12 +125,17 @@ class VoiceManager: NSObject, ObservableObject {
     
     private func playAudioData(_ data: Data) {
         do {
+            // Ensure audio session is active
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.duckOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+            
             // Stop any current playback
             audioPlayer?.stop()
             synthesizer.stopSpeaking(at: .immediate)
             
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.delegate = self
+            audioPlayer?.volume = 1.0
             audioPlayer?.prepareToPlay()
             audioPlayer?.play()
             
