@@ -1,82 +1,153 @@
 import Foundation
 import AVFoundation
 
+// MARK: - Character Voices (Fish Audio)
+enum CharacterVoice: String, CaseIterable, Identifiable {
+    case spongebob = "spongebob"
+    case patrick = "patrick"
+    case mrkrabs = "mrkrabs"
+    case squidward = "squidward"
+    case ed = "ed"
+    
+    var id: String { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .spongebob: return "SpongeBob 🧽"
+        case .patrick: return "Patrick ⭐"
+        case .mrkrabs: return "Mr. Krabs 🦀"
+        case .squidward: return "Squidward 🦑"
+        case .ed: return "Ed 🦞"
+        }
+    }
+    
+    var emoji: String {
+        switch self {
+        case .spongebob: return "🧽"
+        case .patrick: return "⭐"
+        case .mrkrabs: return "🦀"
+        case .squidward: return "🦑"
+        case .ed: return "🦞"
+        }
+    }
+}
+
 // MARK: - Voice Manager
 class VoiceManager: NSObject, ObservableObject {
     static let shared = VoiceManager()
     
     @Published var isSpeaking = false
-    @Published var voiceType: VoiceType = .free
-    @Published var voiceCredits: Int = 100
+    @Published var selectedVoice: CharacterVoice = .spongebob
+    @Published var useFishAudio = true  // Use Fish Audio by default
     
     private let synthesizer = AVSpeechSynthesizer()
     private var audioPlayer: AVAudioPlayer?
-    
-    enum VoiceType: String, CaseIterable {
-        case free = "free"
-        case premium = "premium"
-        
-        var displayName: String {
-            switch self {
-            case .free: return "Ed (Free)"
-            case .premium: return "Ed Premium ✨"
-            }
-        }
-        
-        var description: String {
-            switch self {
-            case .free: return "Apple's built-in voice"
-            case .premium: return "Natural AI voice (uses credits)"
-            }
-        }
-    }
+    private let api = APIClient.shared
     
     override init() {
         super.init()
         synthesizer.delegate = self
         loadSettings()
+        setupAudioSession()
+    }
+    
+    private func setupAudioSession() {
+        do {
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("[Voice] Audio session setup failed: \(error)")
+        }
     }
     
     func loadSettings() {
-        if let saved = UserDefaults.standard.string(forKey: "voiceType"),
-           let type = VoiceType(rawValue: saved) {
-            voiceType = type
+        if let saved = UserDefaults.standard.string(forKey: "selectedVoice"),
+           let voice = CharacterVoice(rawValue: saved) {
+            selectedVoice = voice
         }
-        voiceCredits = UserDefaults.standard.integer(forKey: "voiceCredits")
-        if voiceCredits == 0 { voiceCredits = 100 } // Default credits
+        useFishAudio = UserDefaults.standard.bool(forKey: "useFishAudio")
+        // Default to Fish Audio on first launch
+        if UserDefaults.standard.object(forKey: "useFishAudio") == nil {
+            useFishAudio = true
+        }
     }
     
     func saveSettings() {
-        UserDefaults.standard.set(voiceType.rawValue, forKey: "voiceType")
-        UserDefaults.standard.set(voiceCredits, forKey: "voiceCredits")
+        UserDefaults.standard.set(selectedVoice.rawValue, forKey: "selectedVoice")
+        UserDefaults.standard.set(useFishAudio, forKey: "useFishAudio")
     }
     
     func speak(_ text: String) {
         // Clean text (remove emojis for TTS)
         let cleanText = text
             .replacingOccurrences(of: "🦞", with: "")
+            .replacingOccurrences(of: "🧽", with: "")
+            .replacingOccurrences(of: "⭐", with: "")
+            .replacingOccurrences(of: "🦀", with: "")
+            .replacingOccurrences(of: "🦑", with: "")
             .replacingOccurrences(of: "🔥", with: "")
             .replacingOccurrences(of: "✨", with: "")
             .trimmingCharacters(in: .whitespaces)
         
         guard !cleanText.isEmpty else { return }
         
-        switch voiceType {
-        case .free:
+        if useFishAudio {
+            speakWithFishAudio(cleanText)
+        } else {
             speakWithApple(cleanText)
-        case .premium:
-            if voiceCredits > 0 {
-                speakWithPremium(cleanText)
-            } else {
-                // Fall back to free if no credits
-                speakWithApple(cleanText)
+        }
+    }
+    
+    // MARK: - Fish Audio TTS (SpongeBob etc)
+    private func speakWithFishAudio(_ text: String) {
+        isSpeaking = true
+        
+        Task {
+            do {
+                print("[Voice] Fetching Fish Audio for: \(selectedVoice.rawValue)")
+                
+                if let audioData = try await api.fetchTTSAudio(text: text, voice: selectedVoice.rawValue) {
+                    await MainActor.run {
+                        playAudioData(audioData)
+                    }
+                } else {
+                    // No audio URL returned - fall back to Apple TTS
+                    print("[Voice] Fish Audio unavailable, using Apple TTS")
+                    await MainActor.run {
+                        self.speakWithApple(text)
+                    }
+                }
+            } catch {
+                print("[Voice] Fish Audio error: \(error)")
+                await MainActor.run {
+                    self.speakWithApple(text)
+                }
             }
         }
     }
     
-    // MARK: - Free Voice (Apple TTS)
+    private func playAudioData(_ data: Data) {
+        do {
+            // Stop any current playback
+            audioPlayer?.stop()
+            synthesizer.stopSpeaking(at: .immediate)
+            
+            audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.delegate = self
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+            
+            print("[Voice] Playing Fish Audio (\(data.count) bytes)")
+        } catch {
+            print("[Voice] Audio playback error: \(error)")
+            isSpeaking = false
+        }
+    }
+    
+    // MARK: - Apple TTS (Fallback)
     private func speakWithApple(_ text: String) {
         synthesizer.stopSpeaking(at: .immediate)
+        audioPlayer?.stop()
         
         let utterance = AVSpeechUtterance(string: text)
         
@@ -87,93 +158,26 @@ class VoiceManager: NSObject, ObservableObject {
             "Daniel"
         ]
         
-        var selectedVoice: AVSpeechSynthesisVoice?
+        var selectedAppleVoice: AVSpeechSynthesisVoice?
         for voiceId in preferredVoices {
             if let voice = AVSpeechSynthesisVoice(identifier: voiceId) {
-                selectedVoice = voice
+                selectedAppleVoice = voice
                 break
             }
         }
         
         // Fallback to any British voice
-        if selectedVoice == nil {
-            selectedVoice = AVSpeechSynthesisVoice(language: "en-GB")
+        if selectedAppleVoice == nil {
+            selectedAppleVoice = AVSpeechSynthesisVoice(language: "en-GB")
         }
         
-        utterance.voice = selectedVoice
-        utterance.rate = 0.52  // Slightly slower for clarity
+        utterance.voice = selectedAppleVoice
+        utterance.rate = 0.52
         utterance.pitchMultiplier = 1.0
         utterance.volume = 1.0
         
         isSpeaking = true
         synthesizer.speak(utterance)
-    }
-    
-    // MARK: - Premium Voice (OpenAI TTS)
-    private func speakWithPremium(_ text: String) {
-        guard let apiKey = UserDefaults.standard.string(forKey: "openaiApiKey"), !apiKey.isEmpty else {
-            // No API key, fall back to free
-            speakWithApple(text)
-            return
-        }
-        
-        isSpeaking = true
-        
-        Task {
-            do {
-                let audioData = try await fetchOpenAITTS(text: text, apiKey: apiKey)
-                await playAudio(data: audioData)
-                
-                // Deduct credit
-                DispatchQueue.main.async {
-                    self.voiceCredits -= 1
-                    self.saveSettings()
-                }
-            } catch {
-                print("Premium TTS error: \(error)")
-                // Fall back to free
-                DispatchQueue.main.async {
-                    self.speakWithApple(text)
-                }
-            }
-        }
-    }
-    
-    private func fetchOpenAITTS(text: String, apiKey: String) async throws -> Data {
-        let url = URL(string: "https://api.openai.com/v1/audio/speech")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "model": "tts-1",
-            "input": text,
-            "voice": "onyx",  // Deep, warm male voice
-            "response_format": "mp3"
-        ]
-        
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw NSError(domain: "TTS", code: 1, userInfo: [NSLocalizedDescriptionKey: "TTS API error"])
-        }
-        
-        return data
-    }
-    
-    @MainActor
-    private func playAudio(data: Data) {
-        do {
-            audioPlayer = try AVAudioPlayer(data: data)
-            audioPlayer?.delegate = self
-            audioPlayer?.play()
-        } catch {
-            print("Audio playback error: \(error)")
-            isSpeaking = false
-        }
     }
     
     func stopSpeaking() {

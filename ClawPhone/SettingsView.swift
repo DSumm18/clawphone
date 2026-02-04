@@ -1,180 +1,104 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var voiceManager = VoiceManager.shared
+    @ObservedObject private var voiceManager = VoiceManager.shared
     @Environment(\.dismiss) var dismiss
-    @State private var apiKey: String = ""
-    @State private var showingApiKeyInfo = false
+    @State private var showingVoiceTest = false
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                ClawTheme.background.ignoresSafeArea()
-                
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Voice Selection
-                        voiceSection
-                        
-                        // Premium Section
-                        if voiceManager.voiceType == .premium {
-                            premiumSection
+        NavigationView {
+            Form {
+                // Voice Selection
+                Section(header: Text("Character Voice")) {
+                    ForEach(CharacterVoice.allCases) { voice in
+                        Button(action: {
+                            voiceManager.selectedVoice = voice
+                            voiceManager.saveSettings()
+                            updateServerCharacter(voice)
+                        }) {
+                            HStack {
+                                Text(voice.emoji)
+                                    .font(.title2)
+                                Text(voice.displayName)
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if voiceManager.selectedVoice == voice {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
                         }
-                        
-                        // Credits
-                        creditsSection
-                        
-                        // Test Voice
-                        testSection
                     }
-                    .padding()
+                }
+                
+                // Voice Mode
+                Section(header: Text("Voice Mode"), footer: Text("Fish Audio provides character voices like SpongeBob. Apple TTS is a fallback.")) {
+                    Toggle("Use Fish Audio", isOn: $voiceManager.useFishAudio)
+                        .onChange(of: voiceManager.useFishAudio) { _ in
+                            voiceManager.saveSettings()
+                        }
+                }
+                
+                // Test Voice
+                Section {
+                    Button(action: testVoice) {
+                        HStack {
+                            Image(systemName: "speaker.wave.3")
+                            Text("Test Voice")
+                        }
+                    }
+                    .disabled(voiceManager.isSpeaking)
+                }
+                
+                // About
+                Section(header: Text("About")) {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text("1.1.0")
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Text("Server")
+                        Spacer()
+                        Text("142.132.160.28")
+                            .foregroundColor(.secondary)
+                            .font(.system(.body, design: .monospaced))
+                    }
                 }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .foregroundColor(ClawTheme.primary)
-                }
-            }
-        }
-        .onAppear {
-            apiKey = UserDefaults.standard.string(forKey: "openaiApiKey") ?? ""
-        }
-    }
-    
-    var voiceSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Voice")
-                .font(.headline)
-                .foregroundColor(ClawTheme.text)
-            
-            ForEach(VoiceManager.VoiceType.allCases, id: \.self) { type in
-                Button(action: {
-                    voiceManager.voiceType = type
-                    voiceManager.saveSettings()
-                }) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(type.displayName)
-                                .font(.body)
-                                .foregroundColor(ClawTheme.text)
-                            Text(type.description)
-                                .font(.caption)
-                                .foregroundColor(ClawTheme.textSecondary)
-                        }
-                        Spacer()
-                        if voiceManager.voiceType == type {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(ClawTheme.primary)
-                        }
+                    Button("Done") {
+                        dismiss()
                     }
-                    .padding()
-                    .background(ClawTheme.surface)
-                    .cornerRadius(12)
                 }
             }
         }
     }
     
-    var premiumSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Premium Voice Setup")
-                    .font(.headline)
-                    .foregroundColor(ClawTheme.text)
-                
-                Button(action: { showingApiKeyInfo = true }) {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(ClawTheme.textSecondary)
-                }
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                Text("OpenAI API Key")
-                    .font(.caption)
-                    .foregroundColor(ClawTheme.textSecondary)
-                
-                SecureField("sk-...", text: $apiKey)
-                    .textFieldStyle(.plain)
-                    .padding()
-                    .background(ClawTheme.surface)
-                    .cornerRadius(12)
-                    .onChange(of: apiKey) { newValue in
-                        UserDefaults.standard.set(newValue, forKey: "openaiApiKey")
-                    }
-            }
-            
-            Text("Premium voice uses OpenAI's TTS. ~£0.01 per message.")
-                .font(.caption)
-                .foregroundColor(ClawTheme.textSecondary)
-        }
-        .alert("Premium Voice", isPresented: $showingApiKeyInfo) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Premium uses OpenAI's text-to-speech. Get an API key from platform.openai.com. Each message costs about £0.01.")
-        }
+    func testVoice() {
+        let testPhrases: [CharacterVoice: String] = [
+            .spongebob: "I'm ready, I'm ready, I'm ready!",
+            .patrick: "Is mayonnaise an instrument?",
+            .mrkrabs: "Money money money!",
+            .squidward: "Oh please, how utterly predictable.",
+            .ed: "Hey there! Ready to get things done?"
+        ]
+        
+        let phrase = testPhrases[voiceManager.selectedVoice] ?? "Hello! This is a test."
+        voiceManager.speak(phrase)
     }
     
-    var creditsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Voice Credits")
-                .font(.headline)
-                .foregroundColor(ClawTheme.text)
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(voiceManager.voiceCredits)")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(ClawTheme.primary)
-                    Text("credits remaining")
-                        .font(.caption)
-                        .foregroundColor(ClawTheme.textSecondary)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    // TODO: In-app purchase
-                }) {
-                    Text("Get More")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(ClawTheme.primary)
-                        .foregroundColor(.white)
-                        .cornerRadius(20)
-                }
-            }
-            .padding()
-            .background(ClawTheme.surface)
-            .cornerRadius(12)
-        }
-    }
-    
-    var testSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Test Voice")
-                .font(.headline)
-                .foregroundColor(ClawTheme.text)
-            
-            Button(action: {
-                voiceManager.speak("Hey! I'm Ed, your AI assistant. How can I help you today?")
-            }) {
-                HStack {
-                    Image(systemName: voiceManager.isSpeaking ? "speaker.wave.3.fill" : "speaker.wave.2.fill")
-                    Text(voiceManager.isSpeaking ? "Speaking..." : "Test Ed's Voice")
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(ClawTheme.surface)
-                .foregroundColor(ClawTheme.secondary)
-                .cornerRadius(12)
-            }
-            .disabled(voiceManager.isSpeaking)
+    func updateServerCharacter(_ voice: CharacterVoice) {
+        let deviceId = UserDefaults.standard.string(forKey: "deviceId") ?? ""
+        guard !deviceId.isEmpty else { return }
+        
+        Task {
+            try? await APIClient.shared.setCharacter(voice.rawValue, userId: deviceId)
         }
     }
 }

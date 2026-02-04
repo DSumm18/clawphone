@@ -30,128 +30,12 @@ extension Color {
 // MARK: - Main View
 struct ContentView: View {
     @StateObject private var viewModel = ChatViewModel()
-    @State private var showingSetup = false
     
     var body: some View {
         ZStack {
             ClawTheme.background.ignoresSafeArea()
-            
-            if viewModel.isConnected {
-                ChatView(viewModel: viewModel)
-            } else {
-                SetupView(viewModel: viewModel)
-            }
+            ChatView(viewModel: viewModel)
         }
-    }
-}
-
-// MARK: - Setup View
-struct SetupView: View {
-    @ObservedObject var viewModel: ChatViewModel
-    @State private var code = ""
-    @State private var isConnecting = false
-    @State private var errorMessage: String?
-    
-    var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            
-            // Logo
-            Text("🦞")
-                .font(.system(size: 80))
-            
-            Text("ClawPhone")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(ClawTheme.primary)
-            
-            Text("Voice chat with Ed")
-                .font(.title3)
-                .foregroundColor(ClawTheme.textSecondary)
-            
-            Spacer()
-            
-            // Setup instructions
-            VStack(spacing: 16) {
-                Text("Get your 6-digit code:")
-                    .font(.headline)
-                    .foregroundColor(ClawTheme.text)
-                
-                Text("Message @ClawWatchSetup_bot on Telegram\nand send /connect")
-                    .font(.subheadline)
-                    .foregroundColor(ClawTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
-            
-            // Code input
-            TextField("Enter 6-digit code", text: $code)
-                .keyboardType(.numberPad)
-                .font(.title2)
-                .multilineTextAlignment(.center)
-                .padding()
-                .background(ClawTheme.surface)
-                .cornerRadius(12)
-                .padding(.horizontal, 40)
-                .onChange(of: code) { newValue in
-                    code = String(newValue.prefix(6).filter { $0.isNumber })
-                }
-            
-            if let error = errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-            
-            // Connect button
-            Button(action: connect) {
-                HStack {
-                    if isConnecting {
-                        ProgressView()
-                            .tint(.white)
-                    }
-                    Text(isConnecting ? "Connecting..." : "Connect")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(code.count == 6 ? ClawTheme.primary : ClawTheme.surface)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-            }
-            .disabled(code.count != 6 || isConnecting)
-            .padding(.horizontal, 40)
-            
-            Spacer()
-        }
-    }
-    
-    func connect() {
-        isConnecting = true
-        errorMessage = nil
-        
-        guard let url = URL(string: "https://clawwatch-setup.vercel.app/api/verify") else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["code": code])
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                isConnecting = false
-                
-                guard let data = data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let success = json["success"] as? Bool, success,
-                      let config = json["config"] as? [String: Any],
-                      let chatId = config["chatId"] as? Int else {
-                    errorMessage = "Invalid or expired code"
-                    return
-                }
-                
-                viewModel.connect(chatId: String(chatId))
-            }
-        }.resume()
     }
 }
 
@@ -165,27 +49,26 @@ struct ChatView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("🦞")
+                Text(viewModel.voiceManager.selectedVoice.emoji)
                     .font(.title2)
-                Text("Ed")
+                Text(viewModel.voiceManager.selectedVoice.displayName)
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(ClawTheme.text)
                 
                 Spacer()
                 
+                // Status indicator
+                if viewModel.isWaitingForResponse {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                        .padding(.trailing, 8)
+                }
+                
                 // Settings button
                 Button(action: { showingSettings = true }) {
                     Image(systemName: "gearshape.fill")
                         .font(.title3)
-                        .foregroundColor(ClawTheme.textSecondary)
-                }
-                .padding(.trailing, 8)
-                
-                // Disconnect button
-                Button(action: { viewModel.disconnect() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
                         .foregroundColor(ClawTheme.textSecondary)
                 }
             }
@@ -200,7 +83,7 @@ struct ChatView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(viewModel.messages) { message in
-                            MessageBubble(message: message)
+                            MessageBubble(message: message, emoji: viewModel.voiceManager.selectedVoice.emoji)
                                 .id(message.id)
                         }
                     }
@@ -224,6 +107,7 @@ struct ChatView: View {
 // MARK: - Message Bubble
 struct MessageBubble: View {
     let message: ChatMessage
+    let emoji: String
     
     var body: some View {
         HStack {
@@ -231,7 +115,7 @@ struct MessageBubble: View {
             
             HStack(alignment: .top, spacing: 8) {
                 if !message.isFromUser {
-                    Text("🦞")
+                    Text(emoji)
                         .font(.title3)
                 }
                 
@@ -262,6 +146,7 @@ struct VoiceInputBar: View {
                 .background(ClawTheme.surface)
                 .cornerRadius(20)
                 .onSubmit { sendMessage() }
+                .disabled(viewModel.isWaitingForResponse)
             
             // Mic / Send button
             Button(action: {
@@ -281,6 +166,7 @@ struct VoiceInputBar: View {
                         .foregroundColor(.white)
                 }
             }
+            .disabled(viewModel.isWaitingForResponse && !isRecording)
         }
         .padding()
         .background(ClawTheme.background)
@@ -312,7 +198,7 @@ struct VoiceInputBar: View {
 
 // MARK: - Data Models
 struct ChatMessage: Identifiable {
-    let id = UUID()
+    let id: String
     let text: String
     let isFromUser: Bool
     let timestamp: Date
@@ -321,90 +207,104 @@ struct ChatMessage: Identifiable {
 // MARK: - Chat View Model
 class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
-    @Published var isConnected = false
+    @Published var isWaitingForResponse = false
     
-    private var chatId: String = ""
+    let voiceManager = VoiceManager.shared
+    private let api = APIClient.shared
     private var pollTimer: Timer?
-    private let voiceManager = VoiceManager.shared
+    private var lastMessageId = "0"
+    
+    // Device ID for this phone
+    private let deviceId: String = {
+        if let saved = UserDefaults.standard.string(forKey: "deviceId") {
+            return saved
+        }
+        let newId = UUID().uuidString
+        UserDefaults.standard.set(newId, forKey: "deviceId")
+        return newId
+    }()
     
     init() {
-        // Check if already connected
-        if let savedChatId = UserDefaults.standard.string(forKey: "chatId"), !savedChatId.isEmpty {
-            chatId = savedChatId
-            isConnected = true
-            startPolling()
-        }
-    }
-    
-    func connect(chatId: String) {
-        self.chatId = chatId
-        UserDefaults.standard.set(chatId, forKey: "chatId")
-        isConnected = true
         startPolling()
         
         // Welcome message
-        let welcome = ChatMessage(text: "Hey! I'm Ed 🦞 What's on your mind?", isFromUser: false, timestamp: Date())
+        let welcome = ChatMessage(
+            id: "welcome",
+            text: "Hey! I'm \(voiceManager.selectedVoice.displayName)! What's on your mind?",
+            isFromUser: false,
+            timestamp: Date()
+        )
         messages.append(welcome)
-        speak(welcome.text)
-    }
-    
-    func disconnect() {
-        chatId = ""
-        UserDefaults.standard.removeObject(forKey: "chatId")
-        isConnected = false
-        messages.removeAll()
-        pollTimer?.invalidate()
     }
     
     func startPolling() {
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        // Poll every 1 second for faster responses
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.fetchMessages()
         }
     }
     
     func fetchMessages() {
-        guard !chatId.isEmpty else { return }
-        
-        guard let url = URL(string: "https://clawwatch-setup.vercel.app/api/messages?chatId=\(chatId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-            guard let data = data,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let messages = json["messages"] as? [[String: Any]] else { return }
-            
-            DispatchQueue.main.async {
-                for msg in messages {
-                    if let text = msg["text"] as? String {
-                        let response = ChatMessage(text: text, isFromUser: false, timestamp: Date())
-                        self?.messages.append(response)
-                        self?.speak(text)
+        Task {
+            do {
+                let newMessages = try await api.fetchMessages(userId: deviceId, since: lastMessageId)
+                
+                await MainActor.run {
+                    for msg in newMessages {
+                        // Only add messages from Ed that we haven't seen
+                        if !msg.isFromUser && !messages.contains(where: { $0.id == msg.id }) {
+                            let chatMessage = ChatMessage(
+                                id: msg.id,
+                                text: msg.text,
+                                isFromUser: false,
+                                timestamp: Date()
+                            )
+                            messages.append(chatMessage)
+                            
+                            // Speak the response
+                            voiceManager.speak(msg.text)
+                            
+                            // No longer waiting
+                            isWaitingForResponse = false
+                        }
+                        
+                        // Update last seen ID
+                        if msg.id > lastMessageId {
+                            lastMessageId = msg.id
+                        }
                     }
                 }
+            } catch {
+                print("[Chat] Poll error: \(error)")
             }
-        }.resume()
+        }
     }
     
     func sendMessage(_ text: String) {
-        guard !chatId.isEmpty else { return }
-        
-        let userMessage = ChatMessage(text: text, isFromUser: true, timestamp: Date())
+        let userMessage = ChatMessage(
+            id: UUID().uuidString,
+            text: text,
+            isFromUser: true,
+            timestamp: Date()
+        )
         messages.append(userMessage)
+        isWaitingForResponse = true
         
-        guard let url = URL(string: "https://clawwatch-setup.vercel.app/api/send") else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "chatId": chatId,
-            "message": text
-        ])
-        
-        URLSession.shared.dataTask(with: request).resume()
-    }
-    
-    func speak(_ text: String) {
-        voiceManager.speak(text)
+        Task {
+            do {
+                let response = try await api.sendMessage(text, userId: deviceId)
+                print("[Chat] Message sent: \(response.source)")
+                
+                // If AI responded directly (not linked to Ed), we'll get it in poll
+                // If waiting for Ed, poll will pick it up
+                
+            } catch {
+                print("[Chat] Send error: \(error)")
+                await MainActor.run {
+                    isWaitingForResponse = false
+                }
+            }
+        }
     }
 }
 

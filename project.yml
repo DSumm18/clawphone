@@ -8,8 +8,8 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: J7W6QJ77XW
-    MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.1.0"
+    CURRENT_PROJECT_VERSION: "2"
 
 schemes:
   ClawPhone:
@@ -44,3 +44,9 @@ targets:
           - UIInterfaceOrientationPortrait
         NSSpeechRecognitionUsageDescription: "ClawPhone needs speech recognition to convert your voice to messages for Ed."
         NSMicrophoneUsageDescription: "ClawPhone needs microphone access to hear your voice messages."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSExceptionDomains:
+            142.132.160.28:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
