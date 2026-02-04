@@ -12,7 +12,6 @@ class StoreManager: ObservableObject {
     static let shared = StoreManager()
     
     @Published var products: [Product] = []
-    @Published var purchasedSubscriptions: [Product] = []
     @Published var subscriptionStatus: SubscriptionStatus = .notSubscribed
     @Published var isLoading = false
     
@@ -23,10 +22,10 @@ class StoreManager: ObservableObject {
         case unknown
     }
     
-    private var updateListenerTask: Task<Void, Error>?
+    private var updateListenerTask: Task<Void, Never>?
     
     init() {
-        updateListenerTask = listenForTransactions()
+        startListening()
         Task {
             await loadProducts()
             await updateSubscriptionStatus()
@@ -35,6 +34,23 @@ class StoreManager: ObservableObject {
     
     deinit {
         updateListenerTask?.cancel()
+    }
+    
+    // MARK: - Start Listening for Transactions
+    private func startListening() {
+        updateListenerTask = Task(priority: .background) { [weak self] in
+            for await verificationResult in Transaction.updates {
+                await self?.handle(verificationResult)
+            }
+        }
+    }
+    
+    private func handle(_ verificationResult: VerificationResult<Transaction>) async {
+        guard case .verified(let transaction) = verificationResult else {
+            return
+        }
+        await updateSubscriptionStatus()
+        await transaction.finish()
     }
     
     // MARK: - Load Products
@@ -56,8 +72,10 @@ class StoreManager: ObservableObject {
         let result = try await product.purchase()
         
         switch result {
-        case .success(let verification):
-            let transaction = try checkVerifiedInstance(verification)
+        case .success(let verificationResult):
+            guard case .verified(let transaction) = verificationResult else {
+                return false
+            }
             await updateSubscriptionStatus()
             await transaction.finish()
             print("[Store] Purchase successful!")
@@ -110,49 +128,6 @@ class StoreManager: ObservableObject {
     var isSubscribed: Bool {
         subscriptionStatus == .subscribed
     }
-    
-    // MARK: - Transaction Listener
-    private func listenForTransactions() -> Task<Void, Error> {
-        return Task.detached {
-            for await result in Transaction.updates {
-                do {
-                    let transaction = try Self.checkVerified(result)
-                    await MainActor.run {
-                        Task {
-                            await self.updateSubscriptionStatus()
-                        }
-                    }
-                    await transaction.finish()
-                } catch {
-                    print("[Store] Transaction verification failed: \(error)")
-                }
-            }
-        }
-    }
-    
-    private static func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
-        switch result {
-        case .unverified:
-            throw StoreError.failedVerification
-        case .verified(let safe):
-            return safe
-        }
-    }
-    
-    private func checkVerifiedInstance<T>(_ result: VerificationResult<T>) throws -> T {
-        switch result {
-        case .unverified:
-            throw StoreError.failedVerification
-        case .verified(let safe):
-            return safe
-        }
-    }
-}
-
-// MARK: - Errors
-enum StoreError: Error {
-    case failedVerification
-    case productNotFound
 }
 
 // MARK: - Subscribe View
@@ -293,7 +268,6 @@ struct VoicePreviewRow: View {
     }
 }
 
-// MARK: - Preview
 #Preview {
     SubscribeView()
 }
