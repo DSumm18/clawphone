@@ -262,8 +262,10 @@ struct SubscribeView: View {
                     
                     Spacer()
                 }
+                .padding(.bottom, 20)
             }
-            .navigationBarTitleDisplayMode(.inline)
+        }
+        .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Close") {
