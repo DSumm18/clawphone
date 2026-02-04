@@ -207,14 +207,14 @@ struct VoiceInputBar: View {
     @Binding var messageText: String
     @StateObject private var speechRecognizer = SpeechRecognizer()
     @State private var isRecording = false
-    @State private var pulseScale: CGFloat = 1.0
-    @State private var pulseOpacity: Double = 0.6
-    @State private var rotation: Double = 0
+    @State private var silenceTimer: Timer?
+    @State private var lastTranscript = ""
+    @State private var buttonScale: CGFloat = 1.0
     
     var body: some View {
         HStack(spacing: 12) {
             // Text field
-            TextField("Type or tap the lobster...", text: $messageText)
+            TextField("Type or tap to speak...", text: $messageText)
                 .padding(12)
                 .background(ClawTheme.surface)
                 .foregroundColor(ClawTheme.text)
@@ -222,7 +222,7 @@ struct VoiceInputBar: View {
                 .onSubmit { sendMessage() }
                 .disabled(viewModel.isWaitingForResponse)
             
-            // Lobster button with animations
+            // Clean lobster button - uses app icon
             Button(action: {
                 if !messageText.isEmpty {
                     sendMessage()
@@ -231,58 +231,37 @@ struct VoiceInputBar: View {
                 }
             }) {
                 ZStack {
-                    // Outer pulsing ring (when idle and ready)
-                    if !isRecording && !viewModel.isWaitingForResponse && messageText.isEmpty {
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    colors: [ClawTheme.primary, ClawTheme.secondary],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 3
-                            )
-                            .frame(width: 70, height: 70)
-                            .scaleEffect(pulseScale)
-                            .opacity(pulseOpacity)
-                    }
-                    
-                    // Main button circle
+                    // Background circle
                     Circle()
-                        .fill(
-                            isRecording ? 
-                                LinearGradient(colors: [Color.red, Color.red.opacity(0.8)], startPoint: .top, endPoint: .bottom) :
-                                LinearGradient(
-                                    colors: [ClawTheme.primary.opacity(0.2), ClawTheme.secondary.opacity(0.2)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                        )
-                        .frame(width: 60, height: 60)
-                        .overlay(
-                            Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [ClawTheme.primary, ClawTheme.secondary],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    ),
-                                    lineWidth: 2
-                                )
-                        )
+                        .fill(isRecording ? Color.red.opacity(0.15) : ClawTheme.surface)
+                        .frame(width: 56, height: 56)
                     
-                    // Lobster or send icon
+                    // Border
+                    Circle()
+                        .stroke(isRecording ? Color.red : ClawTheme.primary, lineWidth: 2)
+                        .frame(width: 56, height: 56)
+                    
+                    // Icon
                     if !messageText.isEmpty {
-                        Image(systemName: "arrow.up")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                        // Send arrow when there's text
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 32))
                             .foregroundColor(ClawTheme.primary)
+                    } else if isRecording {
+                        // Microphone wave when recording
+                        Image(systemName: "waveform")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(.red)
                     } else {
-                        Text("🦞")
-                            .font(.system(size: 30))
-                            .rotationEffect(.degrees(isRecording ? rotation : 0))
+                        // Lobster image from assets
+                        Image("LobsterButton")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
+                            .clipShape(Circle())
                     }
                 }
+                .scaleEffect(buttonScale)
             }
             .disabled(viewModel.isWaitingForResponse && !isRecording)
         }
@@ -290,29 +269,44 @@ struct VoiceInputBar: View {
         .background(ClawTheme.background)
         .onChange(of: speechRecognizer.transcript) { newValue in
             messageText = newValue
-        }
-        .onAppear {
-            startPulseAnimation()
+            // Reset silence timer when new speech detected
+            resetSilenceTimer()
         }
         .onChange(of: isRecording) { recording in
             if recording {
-                startRecordingAnimation()
+                // Subtle scale animation when recording
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    buttonScale = 1.05
+                }
             } else {
-                rotation = 0
+                withAnimation(.easeOut(duration: 0.2)) {
+                    buttonScale = 1.0
+                }
             }
         }
     }
     
-    func startPulseAnimation() {
-        withAnimation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
-            pulseScale = 1.15
-            pulseOpacity = 0.3
+    func resetSilenceTimer() {
+        silenceTimer?.invalidate()
+        lastTranscript = messageText
+        
+        // Auto-send after 1.5 seconds of silence
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+            if isRecording && !messageText.isEmpty && messageText == lastTranscript {
+                // User stopped speaking - auto send
+                DispatchQueue.main.async {
+                    stopRecordingAndSend()
+                }
+            }
         }
     }
     
-    func startRecordingAnimation() {
-        withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: false)) {
-            rotation = 360
+    func stopRecordingAndSend() {
+        speechRecognizer.stopTranscribing()
+        isRecording = false
+        silenceTimer?.invalidate()
+        if !messageText.isEmpty {
+            sendMessage()
         }
     }
     
@@ -324,13 +318,10 @@ struct VoiceInputBar: View {
     
     func toggleRecording() {
         if isRecording {
-            speechRecognizer.stopTranscribing()
-            isRecording = false
-            if !messageText.isEmpty {
-                sendMessage()
-            }
+            stopRecordingAndSend()
         } else {
             messageText = ""
+            lastTranscript = ""
             speechRecognizer.startTranscribing()
             isRecording = true
         }
