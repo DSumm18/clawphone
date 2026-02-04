@@ -39,13 +39,13 @@ class StoreManager: ObservableObject {
     // MARK: - Start Listening for Transactions
     private func startListening() {
         updateListenerTask = Task(priority: .background) { [weak self] in
-            for await verificationResult in Transaction.updates {
+            for await verificationResult in StoreKit.Transaction.updates {
                 await self?.handle(verificationResult)
             }
         }
     }
     
-    private func handle(_ verificationResult: VerificationResult<Transaction>) async {
+    private func handle(_ verificationResult: VerificationResult<StoreKit.Transaction>) async {
         guard case .verified(let transaction) = verificationResult else {
             return
         }
@@ -112,7 +112,7 @@ class StoreManager: ObservableObject {
     func updateSubscriptionStatus() async {
         var hasActiveSubscription = false
         
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             if case .verified(let transaction) = result {
                 if transaction.productID == ProductID.voiceSubscription {
                     hasActiveSubscription = true
