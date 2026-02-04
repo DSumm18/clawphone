@@ -7,17 +7,15 @@ enum CharacterVoice: String, CaseIterable, Identifiable {
     case patrick = "patrick"
     case mrkrabs = "mrkrabs"
     case squidward = "squidward"
-    case ed = "ed"
     
     var id: String { rawValue }
     
     var displayName: String {
         switch self {
-        case .spongebob: return "SpongeBob 🧽"
-        case .patrick: return "Patrick ⭐"
-        case .mrkrabs: return "Mr. Krabs 🦀"
-        case .squidward: return "Squidward 🦑"
-        case .ed: return "Ed 🦞"
+        case .spongebob: return "SpongeBob"
+        case .patrick: return "Patrick"
+        case .mrkrabs: return "Mr. Krabs"
+        case .squidward: return "Squidward"
         }
     }
     
@@ -27,7 +25,6 @@ enum CharacterVoice: String, CaseIterable, Identifiable {
         case .patrick: return "⭐"
         case .mrkrabs: return "🦀"
         case .squidward: return "🦑"
-        case .ed: return "🦞"
         }
     }
 }

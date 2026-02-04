@@ -104,13 +104,8 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Voice Mode
-                Section(header: Text("Voice Mode"), footer: Text("Fish Audio provides character voices like SpongeBob. Apple TTS is a fallback.")) {
-                    Toggle("Use Fish Audio", isOn: $voiceManager.useFishAudio)
-                        .onChange(of: voiceManager.useFishAudio) { _ in
-                            voiceManager.saveSettings()
-                        }
-                }
+                // Voice Mode - hidden from users, always use Fish Audio
+                // (Internal toggle removed for cleaner UX)
                 
                 // Test Voice
                 Section {
@@ -128,7 +123,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.1.0")
+                        Text("3.1.0")
                             .foregroundColor(.secondary)
                     }
                     
@@ -161,8 +156,7 @@ struct SettingsView: View {
             .spongebob: "I'm ready, I'm ready, I'm ready!",
             .patrick: "Is mayonnaise an instrument?",
             .mrkrabs: "Money money money!",
-            .squidward: "Oh please, how utterly predictable.",
-            .ed: "Hey there! Ready to get things done?"
+            .squidward: "Oh please, how utterly predictable."
         ]
         
         let phrase = testPhrases[voiceManager.selectedVoice] ?? "Hello! This is a test."
