@@ -3,19 +3,21 @@ options:
   bundleIdPrefix: com.dsumm
   deploymentTarget:
     iOS: "16.0"
+    watchOS: "9.0"
   createIntermediateGroups: true
 
 settings:
   base:
     DEVELOPMENT_TEAM: J7W6QJ77XW
-    MARKETING_VERSION: "4.0.0"
-    CURRENT_PROJECT_VERSION: "5"
+    MARKETING_VERSION: "4.2.0"
+    CURRENT_PROJECT_VERSION: "6"
 
 schemes:
   ClawPhone:
     build:
       targets:
         ClawPhone: all
+        ClawPhoneWatch: all
     run:
       config: Debug
 
@@ -25,6 +27,8 @@ targets:
     platform: iOS
     sources:
       - path: "ClawPhone"
+    dependencies:
+      - target: ClawPhoneWatch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dsumm.clawphone
@@ -42,7 +46,35 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        NSSpeechRecognitionUsageDescription: "ClawPhone needs speech recognition to convert your voice to messages for Ed."
+        NSSpeechRecognitionUsageDescription: "ClawPhone needs speech recognition to convert your voice to messages."
+        NSMicrophoneUsageDescription: "ClawPhone needs microphone access to hear your voice messages."
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+          NSExceptionDomains:
+            142.132.160.28:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
+
+  ClawPhoneWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: "ClawPhoneWatch"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dsumm.clawphone.watchkitapp
+        PRODUCT_NAME: ClawPhoneWatch
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_PREVIEWS: YES
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.dsumm.clawphone
+    info:
+      properties:
+        CFBundleDisplayName: ClawPhone
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        WKApplication: true
+        NSSpeechRecognitionUsageDescription: "ClawPhone needs speech recognition to convert your voice to messages."
         NSMicrophoneUsageDescription: "ClawPhone needs microphone access to hear your voice messages."
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: false
