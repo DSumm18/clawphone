@@ -125,8 +125,30 @@ class APIClient {
         let _ = try await URLSession.shared.data(for: request)
     }
     
+    // MARK: - Check Connection Status
+    func checkConnectionStatus(deviceId: String) async throws -> ConnectionStatusResponse {
+        guard let url = URL(string: "\(baseURL)/connect/status?deviceId=\(deviceId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw APIError.invalidResponse
+        }
+        
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        return ConnectionStatusResponse(
+            connected: json["connected"] as? Bool ?? false,
+            botName: json["botName"] as? String
+        )
+    }
+    
     // MARK: - Validate Connection Code
-    func validateCode(_ code: String, deviceId: String) async throws -> Bool {
+    func validateConnectCode(code: String, deviceId: String) async throws -> ConnectCodeResponse {
         guard let url = URL(string: "\(baseURL)/connect/validate") else {
             throw APIError.invalidURL
         }
@@ -147,12 +169,26 @@ class APIClient {
             throw APIError.invalidResponse
         }
         
-        if httpResponse.statusCode == 200 {
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
-            return json["success"] as? Bool ?? false
-        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
         
-        return false
+        if httpResponse.statusCode == 200 {
+            // Extract bot name from message like "Connected to Claw!"
+            let message = json["message"] as? String ?? ""
+            var botName: String? = nil
+            if message.contains("Connected to ") {
+                botName = message.replacingOccurrences(of: "Connected to ", with: "").replacingOccurrences(of: "!", with: "")
+            }
+            return ConnectCodeResponse(success: true, message: message, botName: botName)
+        } else {
+            let error = json["error"] as? String ?? "Unknown error"
+            return ConnectCodeResponse(success: false, message: error, botName: nil)
+        }
+    }
+    
+    // Legacy method for backward compatibility
+    func validateCode(_ code: String, deviceId: String) async throws -> Bool {
+        let result = try await validateConnectCode(code: code, deviceId: deviceId)
+        return result.success
     }
 }
 
@@ -170,6 +206,17 @@ struct ServerMessage {
     let from: String
     
     var isFromUser: Bool { from == "user" }
+}
+
+struct ConnectionStatusResponse {
+    let connected: Bool
+    let botName: String?
+}
+
+struct ConnectCodeResponse {
+    let success: Bool
+    let message: String?
+    let botName: String?
 }
 
 // MARK: - Errors

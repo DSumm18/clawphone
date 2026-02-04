@@ -4,10 +4,83 @@ struct SettingsView: View {
     @ObservedObject private var voiceManager = VoiceManager.shared
     @Environment(\.dismiss) var dismiss
     @State private var showingVoiceTest = false
+    @State private var connectCode = ""
+    @State private var isConnecting = false
+    @State private var connectionStatus: ConnectionStatus = .unknown
+    @State private var connectedBotName: String? = nil
+    
+    enum ConnectionStatus {
+        case unknown, connected, notConnected, error(String)
+    }
+    
+    private let deviceId: String = {
+        UserDefaults.standard.string(forKey: "deviceId") ?? UUID().uuidString
+    }()
     
     var body: some View {
         NavigationView {
             Form {
+                // Connection Section - Most Important!
+                Section(header: Text("🔗 Connect to Your Bot"), footer: Text("Get your 6-digit code from your Clawdbot by typing /connect clawphone")) {
+                    
+                    // Status indicator
+                    HStack {
+                        Text("Status")
+                        Spacer()
+                        switch connectionStatus {
+                        case .connected:
+                            HStack {
+                                Circle().fill(Color.green).frame(width: 8, height: 8)
+                                Text(connectedBotName ?? "Connected")
+                                    .foregroundColor(.green)
+                            }
+                        case .notConnected:
+                            HStack {
+                                Circle().fill(Color.orange).frame(width: 8, height: 8)
+                                Text("Not Connected")
+                                    .foregroundColor(.orange)
+                            }
+                        case .error(let msg):
+                            Text(msg).foregroundColor(.red)
+                        case .unknown:
+                            Text("Checking...").foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Connect code input
+                    if case .notConnected = connectionStatus {
+                        HStack {
+                            TextField("Enter 6-digit code", text: $connectCode)
+                                .keyboardType(.numberPad)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .disabled(isConnecting)
+                            
+                            Button(action: submitConnectCode) {
+                                if isConnecting {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Text("Connect")
+                                        .fontWeight(.semibold)
+                                }
+                            }
+                            .disabled(connectCode.count != 6 || isConnecting)
+                            .buttonStyle(.borderedProminent)
+                        }
+                    }
+                    
+                    // Disconnect option
+                    if case .connected = connectionStatus {
+                        Button(action: disconnect) {
+                            HStack {
+                                Image(systemName: "xmark.circle")
+                                Text("Disconnect")
+                            }
+                            .foregroundColor(.red)
+                        }
+                    }
+                }
+                
                 // Voice Selection
                 Section(header: Text("Character Voice")) {
                     ForEach(CharacterVoice.allCases) { voice in
@@ -77,6 +150,9 @@ struct SettingsView: View {
                     }
                 }
             }
+            .onAppear {
+                checkConnectionStatus()
+            }
         }
     }
     
@@ -100,6 +176,59 @@ struct SettingsView: View {
         Task {
             try? await APIClient.shared.setCharacter(voice.rawValue, userId: deviceId)
         }
+    }
+    
+    func checkConnectionStatus() {
+        Task {
+            do {
+                let status = try await APIClient.shared.checkConnectionStatus(deviceId: deviceId)
+                await MainActor.run {
+                    if status.connected {
+                        connectionStatus = .connected
+                        connectedBotName = status.botName
+                    } else {
+                        connectionStatus = .notConnected
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    connectionStatus = .notConnected
+                }
+            }
+        }
+    }
+    
+    func submitConnectCode() {
+        guard connectCode.count == 6 else { return }
+        isConnecting = true
+        
+        Task {
+            do {
+                let result = try await APIClient.shared.validateConnectCode(code: connectCode, deviceId: deviceId)
+                await MainActor.run {
+                    if result.success {
+                        connectionStatus = .connected
+                        connectedBotName = result.botName
+                        connectCode = ""
+                    } else {
+                        connectionStatus = .error(result.message ?? "Invalid code")
+                    }
+                    isConnecting = false
+                }
+            } catch {
+                await MainActor.run {
+                    connectionStatus = .error("Connection failed")
+                    isConnecting = false
+                }
+            }
+        }
+    }
+    
+    func disconnect() {
+        // Clear local connection (server-side would need an endpoint)
+        UserDefaults.standard.removeObject(forKey: "connectedBot")
+        connectionStatus = .notConnected
+        connectedBotName = nil
     }
 }
 
