@@ -8,8 +8,8 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: J7W6QJ77XW
-    MARKETING_VERSION: "3.2.0"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "4.0.0"
+    CURRENT_PROJECT_VERSION: "5"
 
 schemes:
   ClawPhone:
@@ -33,6 +33,7 @@ targets:
         SWIFT_VERSION: "5.9"
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
+        CODE_SIGN_ENTITLEMENTS: "ClawPhone/ClawPhone.entitlements"
     info:
       path: "ClawPhone/Info.plist"
       properties:

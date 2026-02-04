@@ -2,8 +2,10 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject private var voiceManager = VoiceManager.shared
+    @ObservedObject private var storeManager = StoreManager.shared
     @Environment(\.dismiss) var dismiss
     @State private var showingVoiceTest = false
+    @State private var showingSubscribe = false
     @State private var connectCode = ""
     @State private var isConnecting = false
     @State private var connectionStatus: ConnectionStatus = .unknown
@@ -81,21 +83,60 @@ struct SettingsView: View {
                     }
                 }
                 
+                // Subscription Status
+                Section(header: Text("🎭 Premium Voices")) {
+                    if storeManager.isSubscribed {
+                        HStack {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundColor(.green)
+                            Text("Subscribed")
+                                .foregroundColor(.green)
+                            Spacer()
+                            Text("All voices unlocked")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } else {
+                        Button(action: { showingSubscribe = true }) {
+                            HStack {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Unlock All Voices")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text("£0.99/mo")
+                                    .foregroundColor(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+                
                 // Voice Selection
-                Section(header: Text("Character Voice")) {
+                Section(header: Text("Character Voice"), footer: storeManager.isSubscribed ? nil : Text("Subscribe to unlock all voices")) {
                     ForEach(CharacterVoice.allCases) { voice in
+                        let isLocked = !storeManager.isSubscribed && voice != .spongebob
+                        
                         Button(action: {
-                            voiceManager.selectedVoice = voice
-                            voiceManager.saveSettings()
-                            updateServerCharacter(voice)
+                            if isLocked {
+                                showingSubscribe = true
+                            } else {
+                                voiceManager.selectedVoice = voice
+                                voiceManager.saveSettings()
+                                updateServerCharacter(voice)
+                            }
                         }) {
                             HStack {
                                 Text(voice.emoji)
                                     .font(.title2)
                                 Text(voice.displayName)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(isLocked ? .secondary : .primary)
                                 Spacer()
-                                if voiceManager.selectedVoice == voice {
+                                if isLocked {
+                                    Image(systemName: "lock.fill")
+                                        .foregroundColor(.orange)
+                                } else if voiceManager.selectedVoice == voice {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.blue)
                                 }
@@ -123,7 +164,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("3.1.0")
+                        Text("4.0.0")
                             .foregroundColor(.secondary)
                     }
                     
@@ -147,6 +188,9 @@ struct SettingsView: View {
             }
             .onAppear {
                 checkConnectionStatus()
+            }
+            .sheet(isPresented: $showingSubscribe) {
+                SubscribeView()
             }
         }
     }
