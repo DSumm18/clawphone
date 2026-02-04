@@ -33,7 +33,6 @@ targets:
         SWIFT_VERSION: "5.9"
         CODE_SIGN_STYLE: Automatic
         ENABLE_PREVIEWS: YES
-        CODE_SIGN_ENTITLEMENTS: "ClawPhone/ClawPhone.entitlements"
     info:
       path: "ClawPhone/Info.plist"
       properties:
