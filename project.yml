@@ -8,8 +8,8 @@ options:
 settings:
   base:
     DEVELOPMENT_TEAM: J7W6QJ77XW
-    MARKETING_VERSION: "4.5.0"
-    CURRENT_PROJECT_VERSION: "45"
+    MARKETING_VERSION: "5.5.0"
+    CURRENT_PROJECT_VERSION: "55"
 
 targets:
   ClawPhone:
@@ -31,6 +31,14 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         NSSpeechRecognitionUsageDescription: ClawPhone needs speech recognition to convert your voice to messages.
         NSMicrophoneUsageDescription: ClawPhone needs microphone access to hear your voice messages.
         NSCameraUsageDescription: ClawPhone needs camera access to take photos to send to your AI.
