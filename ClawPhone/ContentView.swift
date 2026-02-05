@@ -45,8 +45,7 @@ struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var messageText = ""
     @State private var showingSettings = false
-    @State private var connectedBotName: String? = nil
-    @State private var isConnected = false
+    // Using appState.connectedBotName and appState.isConnected instead of local state
     
     var body: some View {
         VStack(spacing: 0) {
@@ -60,7 +59,7 @@ struct ChatView: View {
                     .foregroundColor(ClawTheme.text)
                 
                 // Connection status badge
-                if isConnected, let botName = connectedBotName {
+                if appState.isConnected, let botName = appState.connectedBotName {
                     HStack(spacing: 4) {
                         Circle()
                             .fill(Color.green)
@@ -114,11 +113,11 @@ struct ChatView: View {
                     .environmentObject(appState)
             }
             .onAppear {
-                checkConnectionStatus()
+                // Connection status now managed by AppState
             }
             .onChange(of: showingSettings) { showing in
                 if !showing {
-                    checkConnectionStatus()
+                    // AppState already updated by SettingsView
                 }
             }
             
@@ -167,30 +166,7 @@ struct ChatView: View {
         }
     }
     
-    func checkConnectionStatus() {
-        let deviceId = UserDefaults.standard.string(forKey: "deviceId") ?? ""
-        guard !deviceId.isEmpty else {
-            isConnected = false
-            connectedBotName = nil
-            return
-        }
-        
-        guard let url = URL(string: "http://142.132.160.28:8080/api/connection/status?deviceId=\(deviceId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            DispatchQueue.main.async {
-                if let data = data,
-                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let connected = json["connected"] as? Bool {
-                    self.isConnected = connected
-                    self.connectedBotName = json["botName"] as? String
-                } else {
-                    self.isConnected = false
-                    self.connectedBotName = nil
-                }
-            }
-        }.resume()
-    }
+    // Connection status now managed by AppState
 }
 
 // MARK: - Message Bubble
