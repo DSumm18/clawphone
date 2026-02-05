@@ -151,15 +151,20 @@ struct SetupView: View {
                         .textCase(.uppercase)
                         .tracking(1)
                     
-                    SetupStep(number: 1, text: "Open Telegram and message your Clawbot", accentColor: brandRed)
-                    SetupStep(number: 2, text: "Say: \"connect clawphone\" to get a code", accentColor: brandRed)
-                    SetupStep(number: 3, text: "Enter the code here to link your AI", accentColor: brandRed)
+                    SetupStep(number: 1, text: "Message your bot: install clawphone-connect skill", accentColor: brandRed)
+                    SetupStep(number: 2, text: "Then say: connect clawphone", accentColor: brandRed)
+                    SetupStep(number: 3, text: "Enter the 8-digit code to link your AI", accentColor: brandRed)
                     
                     // Explainer for new users
-                    Text("Don't have a Clawbot yet? Get one at clawbot.ai")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .padding(.top, 4)
+                    HStack {
+                        Text("Don't have a Clawbot?")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        Link("Get one at clawbot.ai", destination: URL(string: "https://clawbot.ai")!)
+                            .font(.caption2)
+                            .foregroundColor(brandOrange)
+                    }
+                    .padding(.top, 4)
                 }
                 .padding(20)
                 .background(brandSurface)
