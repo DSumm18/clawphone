@@ -185,11 +185,26 @@ struct MessageBubble: View {
                         .font(.title3)
                 }
                 
-                Text(message.text)
-                    .padding(12)
-                    .background(message.isFromUser ? ClawTheme.primary : ClawTheme.surface)
-                    .foregroundColor(.white)
-                    .cornerRadius(16)
+                VStack(alignment: .leading, spacing: 8) {
+                    // Show image if present
+                    if let imageData = message.imageData,
+                       let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 200, maxHeight: 200)
+                            .cornerRadius(12)
+                    }
+                    
+                    // Show text (if not empty or if no image)
+                    if !message.text.isEmpty || message.imageData == nil {
+                        Text(message.text)
+                    }
+                }
+                .padding(12)
+                .background(message.isFromUser ? ClawTheme.primary : ClawTheme.surface)
+                .foregroundColor(.white)
+                .cornerRadius(16)
             }
             .scaleEffect(appeared ? 1.0 : 0.8)
             .opacity(appeared ? 1.0 : 0.0)
@@ -412,15 +427,17 @@ struct VoiceInputBar: View {
         let text = messageText.isEmpty ? "What's in this image?" : messageText
         guard !text.isEmpty || selectedImage != nil else { return }
         
-        // Convert image to base64 if present
+        // Convert image to base64 and data if present
         var imageBase64: String? = nil
+        var imageData: Data? = nil
         if let image = selectedImage {
             if let jpegData = image.jpegData(compressionQuality: 0.7) {
                 imageBase64 = jpegData.base64EncodedString()
+                imageData = jpegData  // Keep data for display
             }
         }
         
-        viewModel.sendMessage(text, imageBase64: imageBase64)
+        viewModel.sendMessage(text, imageBase64: imageBase64, imageData: imageData)
         messageText = ""
         selectedImage = nil
     }
@@ -443,6 +460,7 @@ struct ChatMessage: Identifiable {
     let text: String
     let isFromUser: Bool
     let timestamp: Date
+    var imageData: Data? = nil  // For displaying sent images
 }
 
 // MARK: - Chat View Model
@@ -523,13 +541,14 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    func sendMessage(_ text: String, imageBase64: String? = nil) {
-        let displayText = imageBase64 != nil ? "📷 \(text)" : text
+    func sendMessage(_ text: String, imageBase64: String? = nil, imageData: Data? = nil) {
+        let displayText = text.isEmpty && imageData != nil ? "What's in this image?" : text
         let userMessage = ChatMessage(
             id: UUID().uuidString,
             text: displayText,
             isFromUser: true,
-            timestamp: Date()
+            timestamp: Date(),
+            imageData: imageData  // Store image data to display in bubble
         )
         messages.append(userMessage)
         isWaitingForResponse = true
