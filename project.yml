@@ -63,6 +63,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         WKApplication: true
+        WKCompanionAppBundleIdentifier: com.dsumm.clawphone
         NSSpeechRecognitionUsageDescription: ClawPhone needs speech recognition.
         NSMicrophoneUsageDescription: ClawPhone needs microphone access.
         NSAppTransportSecurity:
