@@ -123,18 +123,18 @@ struct SetupView: View {
                 
                 // Main headline
                 VStack(spacing: 8) {
-                    Text("Your AI. Any Voice.")
+                    Text("Talk to Your Clawbot")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundColor(.white)
                     
-                    Text("From SpongeBob to JARVIS")
+                    Text("on iPhone & Apple Watch")
                         .font(.title3)
                         .foregroundColor(brandOrange)
                 }
                 .padding(.top, 8)
                 
-                // Tagline
-                Text("Talk to your personal AI assistant\nin 20+ fun character voices")
+                // Tagline - explains the value
+                Text("Connect your personal AI assistant and chat using voice — in 20+ fun character voices")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
@@ -144,16 +144,22 @@ struct SetupView: View {
                 
                 // Setup steps card
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Quick Setup")
+                    Text("Connect Your Clawbot")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(brandOrange)
                         .textCase(.uppercase)
                         .tracking(1)
                     
-                    SetupStep(number: 1, text: "Message your bot: \"connect clawphone\"", accentColor: brandRed)
-                    SetupStep(number: 2, text: "Get your 8-digit connection code", accentColor: brandRed)
-                    SetupStep(number: 3, text: "Enter the code to link your AI", accentColor: brandRed)
+                    SetupStep(number: 1, text: "Open Telegram and message your Clawbot", accentColor: brandRed)
+                    SetupStep(number: 2, text: "Say: \"connect clawphone\" to get a code", accentColor: brandRed)
+                    SetupStep(number: 3, text: "Enter the code here to link your AI", accentColor: brandRed)
+                    
+                    // Explainer for new users
+                    Text("Don't have a Clawbot yet? Get one at clawbot.ai")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .padding(.top, 4)
                 }
                 .padding(20)
                 .background(brandSurface)
