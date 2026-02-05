@@ -377,6 +377,7 @@ struct VoiceInputBar: View {
                 .scaleEffect(buttonScale)
             }
             .disabled(viewModel.isWaitingForResponse && !isRecording)
+            }
         }
         .padding()
         .background(ClawTheme.background)
@@ -456,7 +457,6 @@ struct VoiceInputBar: View {
             isRecording = true
         }
     }
-}
 }
 
 // MARK: - Data Models
