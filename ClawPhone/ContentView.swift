@@ -44,6 +44,8 @@ struct ChatView: View {
     @ObservedObject var viewModel: ChatViewModel
     @State private var messageText = ""
     @State private var showingSettings = false
+    @State private var connectedBotName: String? = nil
+    @State private var isConnected = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -55,6 +57,38 @@ struct ChatView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(ClawTheme.text)
+                
+                // Connection status badge
+                if isConnected, let botName = connectedBotName {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 6, height: 6)
+                        Text(botName)
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.15))
+                    .cornerRadius(12)
+                } else {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 6, height: 6)
+                        Text("Not Connected")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.15))
+                    .cornerRadius(12)
+                    .onTapGesture {
+                        showingSettings = true
+                    }
+                }
                 
                 Spacer()
                 
@@ -76,6 +110,14 @@ struct ChatView: View {
             .background(ClawTheme.surface)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
+            }
+            .onAppear {
+                checkConnectionStatus()
+            }
+            .onChange(of: showingSettings) { showing in
+                if !showing {
+                    checkConnectionStatus()
+                }
             }
             
             // Messages
@@ -121,6 +163,31 @@ struct ChatView: View {
             // Voice input area
             VoiceInputBar(viewModel: viewModel, messageText: $messageText)
         }
+    }
+    
+    func checkConnectionStatus() {
+        let deviceId = UserDefaults.standard.string(forKey: "deviceId") ?? ""
+        guard !deviceId.isEmpty else {
+            isConnected = false
+            connectedBotName = nil
+            return
+        }
+        
+        guard let url = URL(string: "http://142.132.160.28:8080/api/connection/status?deviceId=\(deviceId)") else { return }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            DispatchQueue.main.async {
+                if let data = data,
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let connected = json["connected"] as? Bool {
+                    self.isConnected = connected
+                    self.connectedBotName = json["botName"] as? String
+                } else {
+                    self.isConnected = false
+                    self.connectedBotName = nil
+                }
+            }
+        }.resume()
     }
 }
 
@@ -210,17 +277,63 @@ struct VoiceInputBar: View {
     @State private var silenceTimer: Timer?
     @State private var lastTranscript = ""
     @State private var buttonScale: CGFloat = 1.0
+    @State private var showingImagePicker = false
+    @State private var showingCamera = false
+    @State private var selectedImage: UIImage?
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Text field
-            TextField("Type or tap to speak...", text: $messageText)
-                .padding(12)
-                .background(ClawTheme.surface)
-                .foregroundColor(ClawTheme.text)
-                .cornerRadius(20)
-                .onSubmit { sendMessage() }
+        VStack(spacing: 8) {
+            // Show selected image preview
+            if let image = selectedImage {
+                HStack {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 60, height: 60)
+                        .cornerRadius(8)
+                        .clipped()
+                    
+                    Text("Image attached")
+                        .font(.caption)
+                        .foregroundColor(ClawTheme.textSecondary)
+                    
+                    Spacer()
+                    
+                    Button(action: { selectedImage = nil }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            
+            HStack(spacing: 12) {
+                // Camera button
+                Button(action: { showingCamera = true }) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(ClawTheme.textSecondary)
+                        .frame(width: 36, height: 36)
+                }
                 .disabled(viewModel.isWaitingForResponse)
+                
+                // Photo library button
+                Button(action: { showingImagePicker = true }) {
+                    Image(systemName: "photo.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(ClawTheme.textSecondary)
+                        .frame(width: 36, height: 36)
+                }
+                .disabled(viewModel.isWaitingForResponse)
+                
+                // Text field
+                TextField("Type or tap to speak...", text: $messageText)
+                    .padding(12)
+                    .background(ClawTheme.surface)
+                    .foregroundColor(ClawTheme.text)
+                    .cornerRadius(20)
+                    .onSubmit { sendMessage() }
+                    .disabled(viewModel.isWaitingForResponse)
             
             // Clean lobster button - uses app icon
             Button(action: {
@@ -284,14 +397,20 @@ struct VoiceInputBar: View {
                 }
             }
         }
+        .sheet(isPresented: $showingImagePicker) {
+            ImagePicker(image: $selectedImage, sourceType: .photoLibrary)
+        }
+        .sheet(isPresented: $showingCamera) {
+            ImagePicker(image: $selectedImage, sourceType: .camera)
+        }
     }
     
     func resetSilenceTimer() {
         silenceTimer?.invalidate()
         lastTranscript = messageText
         
-        // Auto-send after 1.5 seconds of silence
-        silenceTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { _ in
+        // Auto-send after 3 seconds of silence
+        silenceTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
             if isRecording && !messageText.isEmpty && messageText == lastTranscript {
                 // User stopped speaking - auto send
                 DispatchQueue.main.async {
@@ -311,9 +430,20 @@ struct VoiceInputBar: View {
     }
     
     func sendMessage() {
-        guard !messageText.isEmpty else { return }
-        viewModel.sendMessage(messageText)
+        let text = messageText.isEmpty ? "What's in this image?" : messageText
+        guard !text.isEmpty || selectedImage != nil else { return }
+        
+        // Convert image to base64 if present
+        var imageBase64: String? = nil
+        if let image = selectedImage {
+            if let jpegData = image.jpegData(compressionQuality: 0.7) {
+                imageBase64 = jpegData.base64EncodedString()
+            }
+        }
+        
+        viewModel.sendMessage(text, imageBase64: imageBase64)
         messageText = ""
+        selectedImage = nil
     }
     
     func toggleRecording() {
@@ -326,6 +456,7 @@ struct VoiceInputBar: View {
             isRecording = true
         }
     }
+}
 }
 
 // MARK: - Data Models
@@ -414,10 +545,11 @@ class ChatViewModel: ObservableObject {
         }
     }
     
-    func sendMessage(_ text: String) {
+    func sendMessage(_ text: String, imageBase64: String? = nil) {
+        let displayText = imageBase64 != nil ? "📷 \(text)" : text
         let userMessage = ChatMessage(
             id: UUID().uuidString,
-            text: text,
+            text: displayText,
             isFromUser: true,
             timestamp: Date()
         )
@@ -426,7 +558,7 @@ class ChatViewModel: ObservableObject {
         
         Task {
             do {
-                let response = try await api.sendMessage(text, userId: deviceId)
+                let response = try await api.sendMessage(text, userId: deviceId, imageBase64: imageBase64)
                 print("[Chat] Message sent: \(response.source)")
                 
                 // If AI responded directly (not linked to Ed), we'll get it in poll
@@ -438,6 +570,46 @@ class ChatViewModel: ObservableObject {
                     isWaitingForResponse = false
                 }
             }
+        }
+    }
+}
+
+// MARK: - Image Picker
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    let sourceType: UIImagePickerController.SourceType
+    @Environment(\.dismiss) var dismiss
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let uiImage = info[.originalImage] as? UIImage {
+                parent.image = uiImage
+            }
+            parent.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }

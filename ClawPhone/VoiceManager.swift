@@ -3,10 +3,22 @@ import AVFoundation
 
 // MARK: - Character Voices (Fish Audio)
 enum CharacterVoice: String, CaseIterable, Identifiable {
+    // SpongeBob (2 free)
     case spongebob = "spongebob"
     case patrick = "patrick"
     case mrkrabs = "mrkrabs"
     case squidward = "squidward"
+    
+    // South Park
+    case cartman = "cartman"
+    case kyle = "kyle"
+    
+    // Rick & Morty (1 free)
+    case rick = "rick"
+    case morty = "morty"
+    
+    // AI Assistants
+    case jarvis = "jarvis"
     
     var id: String { rawValue }
     
@@ -16,6 +28,11 @@ enum CharacterVoice: String, CaseIterable, Identifiable {
         case .patrick: return "Patrick"
         case .mrkrabs: return "Mr. Krabs"
         case .squidward: return "Squidward"
+        case .cartman: return "Cartman"
+        case .kyle: return "Kyle"
+        case .rick: return "Rick Sanchez"
+        case .morty: return "Morty"
+        case .jarvis: return "JARVIS"
         }
     }
     
@@ -25,6 +42,52 @@ enum CharacterVoice: String, CaseIterable, Identifiable {
         case .patrick: return "⭐"
         case .mrkrabs: return "🦀"
         case .squidward: return "🦑"
+        case .cartman: return "🍩"
+        case .kyle: return "🧢"
+        case .rick: return "🧪"
+        case .morty: return "😰"
+        case .jarvis: return "🎯"
+        }
+    }
+    
+    var category: String {
+        switch self {
+        case .spongebob, .patrick, .mrkrabs, .squidward: return "SpongeBob"
+        case .cartman, .kyle: return "South Park"
+        case .rick, .morty: return "Rick & Morty"
+        case .jarvis: return "AI Assistants"
+        }
+    }
+    
+    var isFree: Bool {
+        switch self {
+        case .spongebob, .patrick, .rick:  // 3 free voices
+            return true
+        default:
+            return false
+        }
+    }
+    
+    var fishAudioId: String {
+        switch self {
+        case .spongebob: return "c4b9d66aa7a24f5781684e6ae4b2fcfd"
+        case .patrick: return "d1520b60870b4e9aa01eab5bfefb1c45"
+        case .mrkrabs: return "394d3112f0da41049c42177f3ca31c5a"
+        case .squidward: return "08d0db87333c4362881d395fdd18de59"
+        case .cartman: return "b4f55643a15944e499defe42964d2ebf"
+        case .kyle: return "f19377d1769a419c87053f75ec98453d"
+        case .rick: return "d2e75a3e3fd6419893057c02a375a113"
+        case .morty: return "3d445d095ba04681bcba7177faedf55a"
+        case .jarvis: return "612b878b113047d9a770c069c8b4fdfe"
+        }
+    }
+    
+    // Group voices by category for display
+    static var grouped: [(category: String, voices: [CharacterVoice])] {
+        let categories = ["SpongeBob", "South Park", "Rick & Morty", "AI Assistants"]
+        return categories.compactMap { cat in
+            let voices = allCases.filter { $0.category == cat }
+            return voices.isEmpty ? nil : (cat, voices)
         }
     }
 }

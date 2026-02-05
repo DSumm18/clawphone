@@ -10,7 +10,7 @@ class APIClient {
     private init() {}
     
     // MARK: - Send Message
-    func sendMessage(_ text: String, userId: String) async throws -> MessageResponse {
+    func sendMessage(_ text: String, userId: String, imageBase64: String? = nil) async throws -> MessageResponse {
         guard let url = URL(string: "\(baseURL)/message") else {
             throw APIError.invalidURL
         }
@@ -18,12 +18,18 @@ class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 60 // Longer timeout for image uploads
         
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "userId": userId,
             "message": text
         ]
+        
+        // Add image if present
+        if let imageBase64 = imageBase64 {
+            body["image"] = imageBase64
+        }
+        
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
         let (data, response) = try await URLSession.shared.data(for: request)

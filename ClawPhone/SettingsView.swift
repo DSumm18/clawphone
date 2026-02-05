@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingVoiceTest = false
     @State private var showingSubscribe = false
+    @State private var showingSupport = false
     @State private var connectCode = ""
     @State private var isConnecting = false
     @State private var connectionStatus: ConnectionStatus = .unknown
@@ -22,8 +23,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                // Connection Section - Most Important!
-                Section(header: Text("🔗 Connect to Your Bot"), footer: Text("Get your 8-digit code from your Clawdbot by typing /connect clawphone")) {
+                // Connection Section - Step by Step Guide
+                Section(header: Text("🔗 Connect to Your Bot")) {
                     
                     // Status indicator
                     HStack {
@@ -49,26 +50,52 @@ struct SettingsView: View {
                         }
                     }
                     
-                    // Connect code input
+                    // Step-by-step guide when not connected
                     if case .notConnected = connectionStatus {
-                        HStack {
-                            TextField("Enter 8-digit code", text: $connectCode)
-                                .keyboardType(.numberPad)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .disabled(isConnecting)
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Step 1")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Message your bot: **connect clawphone**")
+                                .font(.subheadline)
                             
-                            Button(action: submitConnectCode) {
-                                if isConnecting {
-                                    ProgressView()
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Text("Connect")
-                                        .fontWeight(.semibold)
+                            Divider()
+                            
+                            Text("Step 2")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Your bot will reply with an 8-digit code")
+                                .font(.subheadline)
+                            
+                            Divider()
+                            
+                            Text("Step 3")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Enter the code below:")
+                                .font(.subheadline)
+                            
+                            HStack {
+                                TextField("8-digit code", text: $connectCode)
+                                    .keyboardType(.numberPad)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.system(.title3, design: .monospaced))
+                                    .disabled(isConnecting)
+                                
+                                Button(action: submitConnectCode) {
+                                    if isConnecting {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Text("Connect")
+                                            .fontWeight(.semibold)
+                                    }
                                 }
+                                .disabled(connectCode.count != 8 || isConnecting)
+                                .buttonStyle(.borderedProminent)
                             }
-                            .disabled(connectCode.count != 8 || isConnecting)
-                            .buttonStyle(.borderedProminent)
                         }
+                        .padding(.vertical, 8)
                     }
                     
                     // Disconnect option
@@ -113,32 +140,42 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Voice Selection
-                Section(header: Text("Character Voice"), footer: storeManager.isSubscribed ? nil : Text("Subscribe to unlock all voices")) {
-                    ForEach(CharacterVoice.allCases) { voice in
-                        let isLocked = !storeManager.isSubscribed && voice != .spongebob
-                        
-                        Button(action: {
-                            if isLocked {
-                                showingSubscribe = true
-                            } else {
-                                voiceManager.selectedVoice = voice
-                                voiceManager.saveSettings()
-                                updateServerCharacter(voice)
-                            }
-                        }) {
-                            HStack {
-                                Text(voice.emoji)
-                                    .font(.title2)
-                                Text(voice.displayName)
-                                    .foregroundColor(isLocked ? .secondary : .primary)
-                                Spacer()
+                // Voice Selection - Grouped by Category
+                ForEach(CharacterVoice.grouped, id: \.category) { category, voices in
+                    Section(header: Text(category)) {
+                        ForEach(voices) { voice in
+                            let isLocked = !storeManager.isSubscribed && !voice.isFree
+                            
+                            Button(action: {
                                 if isLocked {
-                                    Image(systemName: "lock.fill")
-                                        .foregroundColor(.orange)
-                                } else if voiceManager.selectedVoice == voice {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                    showingSubscribe = true
+                                } else {
+                                    voiceManager.selectedVoice = voice
+                                    voiceManager.saveSettings()
+                                    updateServerCharacter(voice)
+                                }
+                            }) {
+                                HStack {
+                                    Text(voice.emoji)
+                                        .font(.title2)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(voice.displayName)
+                                            .foregroundColor(isLocked ? .secondary : .primary)
+                                        if voice.isFree && !storeManager.isSubscribed {
+                                            Text("FREE")
+                                                .font(.caption2)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.green)
+                                        }
+                                    }
+                                    Spacer()
+                                    if isLocked {
+                                        Image(systemName: "lock.fill")
+                                            .foregroundColor(.orange)
+                                    } else if voiceManager.selectedVoice == voice {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
                                 }
                             }
                         }
@@ -164,7 +201,7 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("4.0.0")
+                        Text("4.2.0")
                             .foregroundColor(.secondary)
                     }
                     
@@ -174,6 +211,21 @@ struct SettingsView: View {
                         Text("142.132.160.28")
                             .foregroundColor(.secondary)
                             .font(.system(.body, design: .monospaced))
+                    }
+                }
+                
+                // Support
+                Section {
+                    Button(action: { showingSupport = true }) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                                .foregroundColor(.blue)
+                            Text("Help & Support")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }
@@ -191,6 +243,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingSubscribe) {
                 SubscribeView()
+            }
+            .sheet(isPresented: $showingSupport) {
+                SupportView()
             }
         }
     }
@@ -248,10 +303,15 @@ struct SettingsView: View {
                         connectionStatus = .connected
                         connectedBotName = result.botName
                         connectCode = ""
+                        isConnecting = false
+                        // Dismiss settings and go to chat
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            self.dismiss()
+                        }
                     } else {
                         connectionStatus = .error(result.message ?? "Invalid code")
+                        isConnecting = false
                     }
-                    isConnecting = false
                 }
             } catch {
                 await MainActor.run {
