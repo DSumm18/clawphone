@@ -14,7 +14,9 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>WKApplication</key>
+    <key>WKCompanionAppBundleIdentifier</key>
+	<string>com.dsumm.clawphone</string>
+	<key>WKApplication</key>
     <true/>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>ClawPhone needs speech recognition for voice messages.</string>
