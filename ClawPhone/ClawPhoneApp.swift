@@ -136,9 +136,13 @@ struct SetupView: View {
             }
         }
         .sheet(isPresented: $showingSettings, onDismiss: {
-            appState.checkConnection()
+            // AppState is already updated by SettingsView on successful connect
+            if !appState.isConnected {
+                appState.checkConnection()
+            }
         }) {
             SettingsView()
+                .environmentObject(appState)
         }
     }
 }

@@ -41,6 +41,7 @@ struct ContentView: View {
 
 // MARK: - Chat View
 struct ChatView: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject var viewModel: ChatViewModel
     @State private var messageText = ""
     @State private var showingSettings = false
@@ -110,6 +111,7 @@ struct ChatView: View {
             .background(ClawTheme.surface)
             .sheet(isPresented: $showingSettings) {
                 SettingsView()
+                    .environmentObject(appState)
             }
             .onAppear {
                 checkConnectionStatus()

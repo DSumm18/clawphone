@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject var appState: AppState
     @ObservedObject private var voiceManager = VoiceManager.shared
     @ObservedObject private var storeManager = StoreManager.shared
     @Environment(\.dismiss) var dismiss
@@ -304,6 +305,8 @@ struct SettingsView: View {
                         connectedBotName = result.botName
                         connectCode = ""
                         isConnecting = false
+                        // Update AppState directly so we go to chat
+                        appState.markConnected(botName: result.botName ?? "Bot")
                         // Dismiss settings and go to chat
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             self.dismiss()
@@ -332,4 +335,5 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+        .environmentObject(AppState())
 }
