@@ -330,7 +330,8 @@ struct VoiceInputBar: View {
             
             // Clean lobster button - uses app icon
             Button(action: {
-                if !messageText.isEmpty {
+                if !messageText.isEmpty || selectedImage != nil {
+                    // Send if there's text OR an image
                     sendMessage()
                 } else {
                     toggleRecording()
@@ -348,11 +349,11 @@ struct VoiceInputBar: View {
                         .frame(width: 56, height: 56)
                     
                     // Icon
-                    if !messageText.isEmpty {
-                        // Send arrow when there's text
+                    if !messageText.isEmpty || selectedImage != nil {
+                        // Send arrow when there's text OR image
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 32))
-                            .foregroundColor(ClawTheme.primary)
+                            .foregroundColor(selectedImage != nil ? Color.orange : ClawTheme.primary)
                     } else if isRecording {
                         // Microphone wave when recording
                         Image(systemName: "waveform")
