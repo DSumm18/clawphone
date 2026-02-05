@@ -151,9 +151,9 @@ struct SetupView: View {
                         .textCase(.uppercase)
                         .tracking(1)
                     
-                    SetupStep(number: 1, text: "Message your bot: install clawphone-connect skill", accentColor: brandRed)
-                    SetupStep(number: 2, text: "Then say: connect clawphone", accentColor: brandRed)
-                    SetupStep(number: 3, text: "Enter the 8-digit code to link your AI", accentColor: brandRed)
+                    SetupStep(number: 1, text: "Open Telegram and message your Clawbot", accentColor: brandRed)
+                    SetupStep(number: 2, text: "Say: connect clawphone", accentColor: brandRed)
+                    SetupStep(number: 3, text: "Enter the 8-digit code below", accentColor: brandRed)
                     
                     // Explainer for new users
                     HStack {

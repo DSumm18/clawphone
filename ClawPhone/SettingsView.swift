@@ -54,28 +54,6 @@ struct SettingsView: View {
                     // Step-by-step guide when not connected
                     if case .notConnected = connectionStatus {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("First time? Install the skill:")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            HStack {
-                                Text("install clawphone-connect skill")
-                                    .font(.system(.footnote, design: .monospaced))
-                                    .foregroundColor(.orange)
-                                Spacer()
-                                Button(action: {
-                                    UIPasteboard.general.string = "install clawphone-connect skill"
-                                }) {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.borderless)
-                            }
-                            .padding(8)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(6)
-                            
-                            Divider()
-                            
                             Text("Step 1")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
@@ -95,6 +73,9 @@ struct SettingsView: View {
                             .padding(8)
                             .background(Color(.systemGray6))
                             .cornerRadius(6)
+                            Text("Message your Clawbot on Telegram")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                             
                             Divider()
                             
