@@ -82,61 +82,116 @@ class AppState: ObservableObject {
     }
 }
 
-// Setup screen for first-time users
+// Setup screen for first-time users - Maltbot branded
 struct SetupView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingSettings = false
+    @State private var lobsterScale: CGFloat = 0.8
+    @State private var lobsterOpacity: Double = 0
+    
+    // Brand colors - matching Maltbot website
+    let brandRed = Color(hex: "E85A4F")
+    let brandOrange = Color(hex: "F97316")
+    let brandDark = Color(hex: "0A0A0F")
+    let brandSurface = Color(hex: "1A1A1F")
     
     var body: some View {
         ZStack {
-            Color(hex: "0A0A0F").ignoresSafeArea()
+            // Dark background with subtle gradient
+            LinearGradient(
+                colors: [brandDark, Color(hex: "0F0F15")],
+                startPoint: .top,
+                endPoint: .bottom
+            ).ignoresSafeArea()
             
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 Spacer()
                 
-                Image(systemName: "waveform.circle.fill")
-                    .font(.system(size: 80))
-                    .foregroundColor(.purple)
+                // Lobster icon with animation
+                Image("LobsterButton")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(lobsterScale)
+                    .opacity(lobsterOpacity)
+                    .onAppear {
+                        withAnimation(.spring(response: 0.8, dampingFraction: 0.6)) {
+                            lobsterScale = 1.0
+                            lobsterOpacity = 1.0
+                        }
+                    }
                 
-                Text("Welcome to ClawPhone")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
+                // Main headline
+                VStack(spacing: 8) {
+                    Text("Your AI. Any Voice.")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("From SpongeBob to JARVIS")
+                        .font(.title3)
+                        .foregroundColor(brandOrange)
+                }
+                .padding(.top, 8)
                 
-                Text("Talk to your AI bot using your voice")
+                // Tagline
+                Text("Talk to your personal AI assistant\nin 20+ fun character voices")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
                 
                 Spacer()
                 
-                VStack(alignment: .leading, spacing: 16) {
-                    SetupStep(number: 1, text: "Message your bot: \"connect clawphone\"")
-                    SetupStep(number: 2, text: "Your bot will give you an 8-digit code")
-                    SetupStep(number: 3, text: "Enter the code below to connect")
+                // Setup steps card
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Quick Setup")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(brandOrange)
+                        .textCase(.uppercase)
+                        .tracking(1)
+                    
+                    SetupStep(number: 1, text: "Message your bot: \"connect clawphone\"", accentColor: brandRed)
+                    SetupStep(number: 2, text: "Get your 8-digit connection code", accentColor: brandRed)
+                    SetupStep(number: 3, text: "Enter the code to link your AI", accentColor: brandRed)
                 }
-                .padding()
-                .background(Color(hex: "1A1A24"))
+                .padding(20)
+                .background(brandSurface)
                 .cornerRadius(16)
-                .padding(.horizontal)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(brandRed.opacity(0.3), lineWidth: 1)
+                )
+                .padding(.horizontal, 24)
                 
                 Spacer()
                 
+                // CTA Button - red/orange gradient
                 Button(action: { showingSettings = true }) {
-                    Text("Connect Your Bot")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.purple)
-                        .cornerRadius(12)
+                    HStack {
+                        Image(systemName: "link.circle.fill")
+                        Text("Connect Your Bot")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            colors: [brandRed, brandOrange],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(14)
+                    .shadow(color: brandRed.opacity(0.4), radius: 8, y: 4)
                 }
                 .padding(.horizontal, 32)
-                .padding(.bottom, 32)
+                .padding(.bottom, 40)
             }
         }
         .sheet(isPresented: $showingSettings, onDismiss: {
-            // AppState is already updated by SettingsView on successful connect
             if !appState.isConnected {
                 appState.checkConnection()
             }
@@ -150,6 +205,7 @@ struct SetupView: View {
 struct SetupStep: View {
     let number: Int
     let text: String
+    var accentColor: Color = Color(hex: "E85A4F")
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -158,12 +214,12 @@ struct SetupStep: View {
                 .fontWeight(.bold)
                 .foregroundColor(.white)
                 .frame(width: 24, height: 24)
-                .background(Color.purple)
+                .background(accentColor)
                 .clipShape(Circle())
             
             Text(text)
                 .font(.subheadline)
-                .foregroundColor(.white)
+                .foregroundColor(.white.opacity(0.9))
         }
     }
 }
